@@ -25,6 +25,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'yolo_surveillance = perception.yolo_node:main',
         ],
     },
 )
