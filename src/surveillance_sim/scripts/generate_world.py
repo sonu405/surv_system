@@ -2,6 +2,12 @@
 import os
 import math
 
+# ---- The walking person ----------------------------------------------
+ACTOR_SCALE = 1.0        # keep skin and animation scale equal
+ACTOR_Z = 1.0            # walk.dae origin is near hip height; tune until the feet touch the floor
+SHOW_HEIGHT_REF = False  # True adds a 1.8 m red pole to compare the person against
+
+
 # Gazebo Transport topic for each camera: "<camera_name>/image".
 # These must match the bridge arguments in sim_launch.py.
 def camera_topic(name):
@@ -86,6 +92,7 @@ def create_camera_model(name, x, y, z, target_x, target_y, target_z=1.0):
 
 # Modern Gazebo loads nothing implicitly: physics, sensors (rendering),
 # the GUI scene feed and user commands are all separate system plugins.
+# Imu and Contact are needed by the TurtleBot 4's IMU and bumper sensors.
 WORLD_SYSTEMS = """
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
@@ -93,6 +100,8 @@ WORLD_SYSTEMS = """
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
 """
 
 # Inline sun + ground so the world loads offline (model:// would go through Fuel).
@@ -157,6 +166,9 @@ def generate_world():
     links.append(create_box_link("shed_se",  13.0, -5.5, 2.25, 5.0, 4.0, 4.5, yaw=-0.5, color="0.45 0.38 0.32 1"))
     links.append(create_box_link("shed_ne",  11.5,  6.5, 1.5,  3.0, 2.5, 3.0, yaw=-0.3, color="0.52 0.52 0.52 1"))
 
+    if SHOW_HEIGHT_REF:
+        links.append(create_box_link("height_ref", -3.5, -4.0, 0.9, 0.1, 0.1, 1.8, color="1.0 0.0 0.0 1"))
+
     cameras_xml = [
         create_camera_model("cam_pillar_north", 4.7, 3.2, 7.2, target_x=0.5, target_y=-2.5, target_z=1.0),
         create_camera_model("cam_shed_sw", -11.8, -3.8, 3.8, target_x=2.0, target_y=-1.0, target_z=1.0),
@@ -178,22 +190,22 @@ def generate_world():
     <actor name="walking_person">
       <skin>
         <filename>{ACTOR_MESH}</filename>
-        <scale>1.0</scale>
+        <scale>{ACTOR_SCALE}</scale>
       </skin>
       <animation name="walking">
         <filename>{ACTOR_MESH}</filename>
-        <scale>1.0</scale>
+        <scale>{ACTOR_SCALE}</scale>
         <interpolate_x>true</interpolate_x>
       </animation>
       <script>
         <loop>true</loop>
         <auto_start>true</auto_start>
         <trajectory id="0" type="walking">
-          <waypoint><time>0.0</time><pose>-2.5 -4.0 0 0 0 0.5</pose></waypoint>
-          <waypoint><time>4.0</time><pose>1.5 -1.5 0 0 0 0.8</pose></waypoint>
-          <waypoint><time>8.0</time><pose>2.5 2.0 0 0 0 2.5</pose></waypoint>
-          <waypoint><time>12.0</time><pose>-1.0 0.5 0 0 0 -1.8</pose></waypoint>
-          <waypoint><time>16.0</time><pose>-2.5 -4.0 0 0 0 -1.0</pose></waypoint>
+          <waypoint><time>0.0</time><pose>-2.5 -4.0 {ACTOR_Z} 0 0 0.5</pose></waypoint>
+          <waypoint><time>4.0</time><pose>1.5 -1.5 {ACTOR_Z} 0 0 0.8</pose></waypoint>
+          <waypoint><time>8.0</time><pose>2.5 2.0 {ACTOR_Z} 0 0 2.5</pose></waypoint>
+          <waypoint><time>12.0</time><pose>-1.0 0.5 {ACTOR_Z} 0 0 -1.8</pose></waypoint>
+          <waypoint><time>16.0</time><pose>-2.5 -4.0 {ACTOR_Z} 0 0 -1.0</pose></waypoint>
         </trajectory>
       </script>
     </actor>

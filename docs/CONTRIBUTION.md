@@ -44,10 +44,18 @@ perception / yolo_node
     publishes  /person_activity, /goal_pose
 
 
+Note however that `sim_launch.py` is only the launch file for simulation and YOLO only. For mapping or navigation, 
+we use a different `launch.py`.
+
 
 # Working of `ros2 launch`
 ## Phase 1: building the description (no processes yet)
-   
+
+Ros2 running convention
+```
+ros2 run <package> <executable> --ros-args -p name:=value ...
+```
+
 `ros2 launch surveillance_sim sim_launch.py` calls the `generate_launch_description()` once.
 1. We generate `CAMERA` here.
 2. run the whole simulation on gz.
@@ -59,6 +67,52 @@ t=0   gazebo    → includes gz_sim.launch.py, which starts the gz sim processes
 t=0   bridge    → starts parameter_bridge as a process
 t=0   yolo_node → starts yolo_surveillance as a process
 
+
+## Note about launch.py
+In our launch.py, we also start (not created) a node `robot_state_publisher`.
+Its pubs/subs
+Direction	Topic	Type
+subscribes	/joint_states	sensor_msgs/JointState
+publishes	/tf and /tf_static	tf2_msgs/TFMessage
+publishes	/robot_description	the robot model, used by the spawn step
+
+We needed this for our turtlebot. 
+
+# SLAM
+Note that we'd be replacing Cartographer with `slam_toolbox` from NAV2 as it is more maintained and 
+fits better with our project.
+
+For keyboard, we use `teleop_twist_keyboard`. It publishes plain `Twist` by
+default, but a stamped parameter switches it to `TwistStamped`, which is what the
+TB4’s /cmd_vel bridge expects. It also has speed and turn parameters.
+
+
+Note that the `teleop_twist_keyboard` is just a simple cmd line utility. We use it to 
+publish `TwistStamped` with setting some forward and turn speed.
+
+We run it as 
+```
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:=cmd_vel -p stamped:=true -p speed:=0.2 -p turn:=0.5
+```
+
+Teleop reads keypresses from the terminal and publishes them on a topic called `cmd_vel`. 
+`cmd_vel` is already expected by bridge_ros_gz as setup by the turtle bot 4 launch file. 
+
+Flow:
+```
+teleop_twist_keyboard
+   │ publishes /cmd_vel (TwistStamped, ROS 2)
+   ▼
+bridge_ros_gz   (started by spawn_tb4.launch.py, config in tb4_bridge.yaml)
+   │ converts to gz.msgs.Twist, direction ROS → Gazebo
+   ▼
+Gazebo topic /cmd_vel
+   │ subscribed to by
+   ▼
+diff-drive plugin inside the robot (gz-sim-diff-drive-system, topic /cmd_vel)
+   ▼
+wheels turn, and odometry comes back out on /odom
+```
 
 
 # Topics and Their Pub/Sub across the System
@@ -76,3 +130,29 @@ YOLO NODE (/yolo_node)
 
 Nobody yet subscribes to: /person_activity, /goal_pose
 
+
+### Turtle Bot
+What the robot publishes (Gazebo to ROS)
+
+ROS topic	Type	What it is
+/clock	rosgraph_msgs/Clock	Simulation time
+/odom	nav_msgs/Odometry	Wheel odometry from the diff-drive plugin
+/tf	tf2_msgs/TFMessage	Transforms from Gazebo, from the diff-drive plugin per the bridge file’s comments
+/joint_states	sensor_msgs/JointState	Wheel joint positions
+/scan	sensor_msgs/LaserScan	2D lidar
+/imu	sensor_msgs/Imu	IMU
+/rgbd_camera/image	sensor_msgs/Image	OAK-D colour image
+/rgbd_camera/depth_image	sensor_msgs/Image	OAK-D depth image
+/rgbd_camera/camera_info	sensor_msgs/CameraInfo	Camera intrinsics
+
+What the robot subscribes to (ROS to Gazebo)
+ROS topic	Type	What it does
+/cmd_vel	geometry_msgs/msg/TwistStamped
+
+
+
+# Navigation Package Guide
+The config folder contains the configuration for the `slam_toolbox` package.
+The launch folder contains two ways to launch the slam_toolbox. `mapping_launch` is for the one time 
+launch of slam_toolbox to make a SLAM based map of the system. The other one is the usual launch which uses the 
+already built map.

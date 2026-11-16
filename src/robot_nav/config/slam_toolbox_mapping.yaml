@@ -1,0 +1,43 @@
+slam_toolbox:
+  ros__parameters:
+
+    # --- Frames and topics: which names to use ---
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link        
+    scan_topic: /scan
+
+    # --- Mode ---
+    mode: mapping                # build a new map (the other option is localization)
+
+    # --- Optimiser settings: copied from upstream defaults, leave alone ---
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # --- The map itself ---
+    resolution: 0.05             # metres per map cell
+    max_laser_range: 12.0        # PENDING CHECK: must not exceed the simulated lidar's range
+    map_update_interval: 2.0     # seconds between redrawing /map
+
+    # --- When a scan is used ---
+    throttle_scans: 1            # use every scan (2 would use every second one)
+    minimum_time_interval: 0.5   # at least this many seconds between used scans
+    minimum_travel_distance: 0.3 # ...and the robot must have moved this far (m)
+    minimum_travel_heading: 0.3  # ...or turned this far (rad)
+
+    # --- Transforms ---
+    transform_publish_period: 0.02  # publish map->odom every 20 ms (0 would disable it)
+    transform_timeout: 0.5          # how long to wait for a missing transform (s)
+    tf_buffer_duration: 30.0        # how much TF history to keep (s)
+
+    # --- Scan matching and loop closure ---
+    use_scan_matching: true
+    do_loop_closing: true
+    loop_search_maximum_distance: 3.0          # only look for loops within 3 m of where we think we are
+    loop_match_minimum_chain_size: 10          # how many consecutive scans a loop candidate needs
+    loop_match_minimum_response_coarse: 0.35   # how well a candidate must match, coarse pass
+    loop_match_minimum_response_fine: 0.45     # ...and fine pass (higher = stricter, fewer false loops)

@@ -8,6 +8,8 @@
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
 
 
     <light type="directional" name="sun">
@@ -465,11 +467,11 @@
         <loop>true</loop>
         <auto_start>true</auto_start>
         <trajectory id="0" type="walking">
-          <waypoint><time>0.0</time><pose>-2.5 -4.0 0 0 0 0.5</pose></waypoint>
-          <waypoint><time>4.0</time><pose>1.5 -1.5 0 0 0 0.8</pose></waypoint>
-          <waypoint><time>8.0</time><pose>2.5 2.0 0 0 0 2.5</pose></waypoint>
-          <waypoint><time>12.0</time><pose>-1.0 0.5 0 0 0 -1.8</pose></waypoint>
-          <waypoint><time>16.0</time><pose>-2.5 -4.0 0 0 0 -1.0</pose></waypoint>
+          <waypoint><time>0.0</time><pose>-2.5 -4.0 1.0 0 0 0.5</pose></waypoint>
+          <waypoint><time>4.0</time><pose>1.5 -1.5 1.0 0 0 0.8</pose></waypoint>
+          <waypoint><time>8.0</time><pose>2.5 2.0 1.0 0 0 2.5</pose></waypoint>
+          <waypoint><time>12.0</time><pose>-1.0 0.5 1.0 0 0 -1.8</pose></waypoint>
+          <waypoint><time>16.0</time><pose>-2.5 -4.0 1.0 0 0 -1.0</pose></waypoint>
         </trajectory>
       </script>
     </actor>
