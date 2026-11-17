@@ -13,6 +13,8 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_rviz = LaunchConfiguration('use_rviz')
+    default_start_x = LaunchConfiguration('default_start_x')
+    default_start_y = LaunchConfiguration('default_start_y')
 
     declare_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
@@ -26,6 +28,18 @@ def generate_launch_description():
         description='Launch RViz2 with pre-configured planning view if true'
     )
 
+    declare_start_x_arg = DeclareLaunchArgument(
+        'default_start_x',
+        default_value='0.0',
+        description='Fallback starting X position in meters (inside arena)'
+    )
+
+    declare_start_y_arg = DeclareLaunchArgument(
+        'default_start_y',
+        default_value='0.0',
+        description='Fallback starting Y position in meters (inside arena)'
+    )
+
     planner_node = Node(
         package='path_planning',
         executable='planner_node',
@@ -36,6 +50,8 @@ def generate_launch_description():
             'robot_radius': 0.05,
             'safety_margin': 0,
             'goal_topic': '/goal_pose',
+            'default_start_x': default_start_x,
+            'default_start_y': default_start_y,
         }]
     )
 
@@ -64,6 +80,8 @@ def generate_launch_description():
     return LaunchDescription([
         declare_sim_time_arg,
         declare_use_rviz_arg,
+        declare_start_x_arg,
+        declare_start_y_arg,
         planner_node,
         smoother_node,
         rviz_node,

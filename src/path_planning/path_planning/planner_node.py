@@ -32,7 +32,10 @@ class GridMap:
 
         # Only actual obstacles (occupancy > 50) are blocked.
         # Unknown cells (-1) are treated as free for planning.
-        binary_occupied = (raw_grid > 50)
+        # Standard ROS occupancy grid: 0 = free, 100 = occupied, -1 = unknown.
+        # Unknown cells (-1) outside the arena perimeter walls are marked untraversable,
+        # ensuring all planned trajectories stay strictly within the arena boundaries.
+        binary_occupied = (raw_grid != 0)
 
         r_cells = int(np.ceil(robot_radius / self.cell_size))
         struct = generate_binary_structure(2, 2)
@@ -189,8 +192,8 @@ class PlannerNode(Node):
         self.declare_parameter('robot_radius', 0.05)
         self.declare_parameter('safety_margin', 0)
         self.declare_parameter('goal_topic', '/goal_pose')
-        self.declare_parameter('default_start_x', -8.0)
-        self.declare_parameter('default_start_y', -3.0)
+        self.declare_parameter('default_start_x', 0.0)
+        self.declare_parameter('default_start_y', 0.0)
         self.declare_parameter('map_yaml', '')
 
         self.robot_radius = self.get_parameter('robot_radius').value
@@ -216,6 +219,8 @@ class PlannerNode(Node):
             OccupancyGrid, '/map', self.map_callback, map_qos)
         self.amcl_sub = self.create_subscription(
             PoseWithCovarianceStamped, '/amcl_pose', self.amcl_callback, 10)
+        self.initial_pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped, '/initialpose', self.initial_pose_callback, 10)
 
         self.goal_sub = self.create_subscription(
             PoseStamped, goal_topic, self.goal_callback, 10)
@@ -304,6 +309,10 @@ class PlannerNode(Node):
 
     def amcl_callback(self, msg: PoseWithCovarianceStamped):
         self.current_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
+
+    def initial_pose_callback(self, msg: PoseWithCovarianceStamped):
+        self.current_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
+        self.get_logger().info(f'Start pose updated from RViz 2D Pose Estimate: [{self.current_pose[0]:.2f}, {self.current_pose[1]:.2f}]')
 
     def get_robot_pose(self):
         if self.current_pose is not None:
