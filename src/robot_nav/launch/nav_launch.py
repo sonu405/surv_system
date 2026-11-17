@@ -7,7 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     pkg_share = FindPackageShare('robot_nav') 
     default_nav2_params = PathJoinSubstitution([pkg_share, 'config', 'nav2_params.yaml'])
-    default_map = PathJoinSubstitution([pkg_share, 'maps', 'ongaing_arena_map.yaml'])
+    default_map = PathJoinSubstitution([pkg_share, 'maps', 'ongoing_arena_map.yaml']) #jk you better give me khapa for this
 
     # Declare CLI arguments
     declare_sim_time_arg = DeclareLaunchArgument(
