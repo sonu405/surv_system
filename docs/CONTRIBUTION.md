@@ -115,6 +115,45 @@ wheels turn, and odometry comes back out on /odom
 ```
 
 
+# Navigation Package Guide
+The config folder contains the configuration for the `slam_toolbox` package.
+
+The launch folder contains two ways to launch the slam_toolbox. `mapping_launch` is for the one time 
+launch of slam_toolbox to make a SLAM based map of the system.
+
+The other one is the collective launch file for our navigation related nodes.
+
+These nodes include
+
+Node	Role
+nav2_map_server (by Nav2)	Loads the saved arena.yaml and .pgm and publishes them as /map. It stands in for SLAM’s map output.
+
+AMCL	Works out where the robot is on that fixed map by comparing /scan and /odom to it, and publishes the map → odom transform. It does the same job slam_toolbox did during mapping, but without changing the map. 
+
+planner_server	Computes a global path from the robot to a goal on the map.
+
+controller_server	Follows that path and publishes the drive commands on /cmd_vel.
+
+
+# ACML
+We use NAV2's ACML (Adaptive Monte Carlo Localization) for localization. It uses a particle filter to 
+estimate the robot's pose (x, y, theta) on the saved map. It publishes the correction as the map → odom transform.
+
+It also publishes PoseWithCovarianceStamped on `/acml_pose` for debugging. 
+
+The ACML's correction is what controller and planner subscribe to. 
+
+/map ─────────┐
+/scan ────────┤
+/initialpose ─┼──► AMCL ──► TF: map → odom   (the important output)
+TF odom→base ─┘         └──► /amcl_pose       (informational copy)
+                        └──► /particle_cloud  (for RViz debugging)
+
+
+Do note that AMCL needs a starting guess on /initialpose (the RViz “2D Pose
+Estimate” button), or set_initial_pose: true with initial_pose values in its
+params.
+
 # Topics and Their Pub/Sub across the System
 Gazebo (gz-transport, not visible to ROS)
   pubs: /cam_pillar_north/image, /cam_shed_sw/image, /cam_building_se/image
@@ -148,11 +187,3 @@ ROS topic	Type	What it is
 What the robot subscribes to (ROS to Gazebo)
 ROS topic	Type	What it does
 /cmd_vel	geometry_msgs/msg/TwistStamped
-
-
-
-# Navigation Package Guide
-The config folder contains the configuration for the `slam_toolbox` package.
-The launch folder contains two ways to launch the slam_toolbox. `mapping_launch` is for the one time 
-launch of slam_toolbox to make a SLAM based map of the system. The other one is the usual launch which uses the 
-already built map.

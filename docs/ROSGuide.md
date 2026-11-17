@@ -69,6 +69,89 @@ index. This registers the package, and it’s how `ros2 pkg list`, `ros2 launch`
 read its metadata and dependencies.
 
 
+# Launch Files
+ROS2 launch files are recipe builders. When we run `ros2 launch ...`, ROS
+executes `generate_launch_description()`, collects the blueprint
+(LaunchDescription) we return, and then hands it off to an internal execution
+engine to manage processes, events, and parameters.
+
+Launch files have 4 core patterns.
+
+1. Paths: `FindPackageShare` + `PathJoinSubstitution` 
+
+```py
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+
+# Resolves to: <workspace>/install/my_robot_nav/share/my_robot_nav/config/nav2_params.yaml
+params_file = PathJoinSubstitution([
+    FindPackageShare('my_robot_nav'),
+    'config',
+    'nav2_params.yaml'
+])
+```
+
+2. CLI Arguments
+Instead of hardcoding argument, we expose them on the CLI so that they can overridden from the 
+terminal.
+
+This always work in pair.
+1. `DeclareLaunchArgument`: Defines the flag, its default value, and a description.
+2. `LaunchConfiguration`: A variable handle that fetches whatever value was passed in.
+
+```py
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+
+# 1. Declare the argument (put this inside generate_launch_description)
+declare_map_cmd = DeclareLaunchArgument(
+    'map',
+    default_value=PathJoinSubstitution([FindPackageShare('my_robot_nav'), 'maps', 'warehouse.yaml']),
+    description='Full path to map yaml file to load'
+)
+
+# 2. Create a reference to read it later
+map_yaml = LaunchConfiguration('map')
+```
+
+> Note that we must register the declare_map_cmd inside our `LaunchDescription([...])` list so 
+> ROS registers the CLI flag.
+
+3. Composing Launch Files (`IncludeLaunchDescription`)
+Instead of putting an entire robot stack into a single giant file, we build 
+modular launch files and include them inside a top-level "bringup" launch file. 
+
+```py
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+
+nav2_bringup = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource([
+        PathJoinSubstitution([FindPackageShare('nav2_bringup'), 'launch', 'localization_launch.py'])
+    ]),
+    launch_arguments={
+        'map': map_yaml,
+        'use_sim_time': 'True',
+        'params_file': params_file
+    }.items()
+)
+```
+
+4. Conditional Logic & Event Handlers (`IfCondition` & `RegisterEventHandler`)
+
+Because LaunchConfiguration values aren't known when Python initially parses the file, standard Python if use_rviz: statements will not work. For this, we use ROS launch conditions and event handlers.
+
+Conditional Execution: Start RViz only if use_rviz:=true.
+```py
+from launch.conditions import IfCondition
+
+rviz_node = Node(
+    package='rviz2',
+    executable='rviz2',
+    condition=IfCondition(LaunchConfiguration('use_rviz'))
+)
+```
+
 # Cartographer
 It is Google's SLAM system. It does real time SLAM (that is build a map while tracing where the robot is) in 2D and 
 3D, with lidar and optional IMU and odometry. 
@@ -87,4 +170,20 @@ Note that the slam_toolbox, the map server, AMCL and Nav2 are existing nodes. We
 that start them with the right settings. 
 
 
+# TF
+TF is ROS2's system for tracking ***coordinate frames*** and how they relate to each other. 
 
+Every part of the robot has its own frame (its own origin and axes), and TF
+stores the transforms between them as a tree.
+
+map ──► odom ──► base_link ──► laser
+                     └──────► camera_link
+
+Transforms are published on the /tf and /tf_static topics. We can view them as 
+```py
+ros2 run tf2_tools view_frames     # writes frames.pdf showing your current tree
+ros2 run tf2_ros tf2_echo odom base_link
+```
+
+# Odometry
+Odometry is the robot’s estimate of how far it has moved since it started, computed from its own motion sensors, with no reference to the map. Our turtle bot publies it on /odom.
